@@ -1,0 +1,113 @@
+# One topic per line. The teacher writes questions about each topic.
+# Topics covered by data/eval_questions.jsonl are filtered out automatically.
+# Óptica e ondas
+princípio de Huygens
+interferência em filmes finos
+anéis de Newton
+interferômetro de Michelson
+redes de difração e poder de resolução
+dispersão da luz e prisma
+lentes delgadas e equação do fabricante de lentes
+espelhos esféricos e formação de imagens
+aberração cromática
+fibra óptica e abertura numérica
+polarização por reflexão e ângulo de Brewster
+birrefringência
+velocidade de fase e velocidade de grupo
+ondas estacionárias em uma corda
+batimentos
+efeito Doppler para o som
+efeito Doppler relativístico
+intensidade sonora e decibéis
+ressonância em tubos sonoros
+coerência temporal e espacial da luz
+holografia
+espalhamento Rayleigh e a cor do céu
+# Mecânica clássica
+conservação do momento angular
+momento de inércia e teorema dos eixos paralelos
+rolamento sem deslizamento
+oscilador harmônico amortecido
+oscilador forçado e ressonância
+osciladores acoplados e modos normais
+lagrangiana e equações de Euler-Lagrange
+hamiltoniana e equações de Hamilton
+teorema de Noether
+forças fictícias em referenciais girantes
+força de Coriolis
+precessão de um pião
+colisões elásticas e inelásticas
+problema de dois corpos e massa reduzida
+potencial efetivo em forças centrais
+equação de Bernoulli
+viscosidade e lei de Stokes
+número de Reynolds
+ondas em fluidos e ondas de gravidade
+teorema do virial
+# Eletromagnetismo
+lei de Gauss para o campo elétrico
+potencial elétrico e energia potencial
+capacitores e energia armazenada no campo
+dielétricos e polarização
+lei de Biot-Savart
+campo de um solenoide
+indutância e energia magnética
+circuito RC e constante de tempo
+circuito RLC e ressonância
+vetor de Poynting
+pressão de radiação
+dipolo elétrico oscilante e radiação
+condições de contorno dos campos em interfaces
+ondas eletromagnéticas em condutores e profundidade pelicular
+guias de onda
+potenciais retardados
+magnetismo na matéria: dia, para e ferromagnetismo
+efeito Hall
+# Termodinâmica e física estatística
+primeira lei da termodinâmica
+entropia e segunda lei
+ciclo de Carnot e eficiência máxima
+distribuição de Maxwell-Boltzmann
+equipartição da energia
+gás ideal e teoria cinética
+radiação de corpo negro e lei de Planck
+capacidade térmica dos sólidos
+transições de fase e calor latente
+# Física moderna e quântica
+dualidade onda-partícula
+efeito Compton
+modelo de Bohr do átomo de hidrogênio
+espectro do hidrogênio e série de Balmer
+equação de Schrödinger independente do tempo
+partícula em uma caixa
+poço de potencial finito
+tunelamento quântico
+oscilador harmônico quântico
+spin e experimento de Stern-Gerlach
+princípio de exclusão de Pauli
+dilatação do tempo
+contração do comprimento
+equivalência massa-energia
+transformações de Lorentz
+decaimento radioativo e meia-vida
+fissão e fusão nuclear
+laser e emissão estimulada
+# Astrofísica
+classificação espectral das estrelas
+diagrama de Hertzsprung-Russell
+equilíbrio hidrostático em estrelas
+limite de Chandrasekhar
+anãs brancas e pressão de degenerescência
+pulsares
+buracos negros e raio de Schwarzschild
+lentes gravitacionais
+lei de Hubble e expansão do universo
+redshift cosmológico
+radiação cósmica de fundo
+curvas de rotação de galáxias e matéria escura
+formação estelar e critério de Jeans
+marés e limite de Roche
+paralaxe estelar e distâncias
+magnitudes aparente e absoluta
+exoplanetas pelo método de trânsito
+ondas gravitacionais

@@ -1,16 +1,9 @@
-torch>=2.0.0
-transformers>=4.40.0
-unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git
-peft>=0.10.0
-trl>=0.8.0
-accelerate>=0.27.0
-bitsandbytes>=0.42.0
-datasets>=2.18.0
-huggingface_hub>=0.22.0
-arxiv>=2.1.0
-sympy>=1.12
-scipy>=1.12.0
-numpy>=1.26.0
-matplotlib>=3.8.0
-astropy>=6.0.0
-gradio>=4.0.0
+# App and evaluation (CPU or GPU)
+torch>=2.4
+transformers>=5.5
+peft>=0.19
+accelerate>=1.0
+gradio>=6.0,<7
+numpy>=1.26
+scipy>=1.12
+matplotlib>=3.8

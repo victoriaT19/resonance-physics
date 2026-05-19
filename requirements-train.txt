@@ -1,0 +1,10 @@
+# Dataset generation, training and evaluation on a CUDA GPU (Colab or Kaggle).
+# Install Unsloth first, following its instructions for the current Colab/Kaggle image.
+-r requirements.txt
+unsloth
+bitsandbytes>=0.45
+datasets>=3.0
+huggingface_hub>=0.30
+openai>=1.40
+arxiv>=2.1
+pytest>=8

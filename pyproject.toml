@@ -1,0 +1,12 @@
+[project]
+name = "resonance"
+version = "0.2.0"
+description = "A two-level physics tutor fine-tuned from Gemma 4 E2B"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = ["resonance"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
