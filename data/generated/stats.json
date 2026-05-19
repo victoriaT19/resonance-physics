@@ -1,0 +1,19 @@
+{
+  "teacher": "gemma-4-31b-it",
+  "accepted": 330,
+  "train": 297,
+  "validation": 33,
+  "by_source": {
+    "topic": 243,
+    "arxiv": 87
+  },
+  "rejected": {
+    "eval_term": 40,
+    "finish_reason=length": 75,
+    "review": 33,
+    "words=2827": 1,
+    "balanced_math": 1,
+    "finish_reason=content_filter": 3,
+    "both_levels": 2
+  }
+}

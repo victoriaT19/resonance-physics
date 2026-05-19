@@ -59,7 +59,39 @@ perihelion 0.3 AU, aphelion 1.7 AU, period 1 year, 70.9 / 12.5 km/s. Moving `a` 
 redraws the plot and updates the panel (period 11.2 years = 5^1.5) without a new answer
 from the model.
 
+### Training set
+
+`python -m resonance.data build --out data/generated --per-topic 4 --arxiv-per-category 30 --verify --workers 12`,
+teacher `gemma-4-31b-it` through the Gemini API (free tier, thinking level minimal).
+
+Latency measured before the run: with default thinking one answer took 105 s and
+returned a `<thought>` block; `reasoning_effort` was rejected (HTTP 400); with
+`thinking_level: minimal` a one-sentence answer took 57 s; 8 parallel calls took 13-49 s
+each with no errors for `gemma-4-31b-it`, and 1-3 s with 3 of 8 failing (HTTP 500) for
+`gemma-4-26b-a4b-it`.
+
+| | count |
+|---|---|
+| Topics used (6 of 105 overlap the evaluation set) | 99 |
+| arXiv papers with a question | 139 |
+| Questions answered | 485 |
+| Accepted | **330** (297 train, 33 validation; 243 topic, 87 arXiv) |
+| Rejected: hit the 3,072-token limit | 75 |
+| Rejected: question touches an evaluation topic | 40 |
+| Rejected: teacher's review found a physics error | 33 |
+| Rejected: provider content filter | 3 |
+| Rejected: other format checks | 4 |
+
+Throughput about 8 answers (plus reviews) per minute with 12 workers; the free tier
+returned frequent HTTP 500/503 errors, all recovered by retries.
+
+Checked afterwards with the Gemma 4 tokenizer: rendered samples have a median of 780
+tokens and a maximum of 1,076 (none above the 2,048 training limit); no training or
+validation question matches an evaluation exclusion term; every answer passes the
+format checks. `cache.jsonl` (every attempt, with the review verdicts) is kept out of
+the repository.
+
 ### Not done
 
-- Dataset generation (needs a teacher API key), training and evaluation (need a GPU).
-  The README's Results section stays empty until they run.
+- Training and evaluation (need a GPU). The README's Results section stays empty until
+  they run.
