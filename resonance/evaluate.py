@@ -50,9 +50,75 @@ def score_answer(item: dict, text: str, truncated: bool) -> dict:
 
 
 def parse_judge(text: str) -> tuple[int | None, str]:
-    m = re.search(r"NOTA:\s*([1-5])", text)
-    reason = re.search(r"MOTIVO:\s*(.+)", text)
+    # Tolerates Markdown such as "**NOTA:** 4" or "**NOTA**: 4".
+    m = re.search(r"NOTA\W{0,4}([1-5])", text, flags=re.IGNORECASE)
+    reason = re.search(r"MOTIVO\W{0,4}(.+)", text, flags=re.IGNORECASE)
     return (int(m.group(1)) if m else None), (reason.group(1).strip() if reason else text.strip())
+
+
+def judge_rows(judge, items: list[dict], rows: list[dict], model_name: str, workers: int = 8) -> None:
+    """Add a judge grade to each row, in parallel."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    by_id = {it["id"]: it for it in items}
+
+    def one(row):
+        item = by_id[row["id"]]
+        text, _ = judge.chat([{"role": "user", "content": JUDGE_PROMPT.format(
+            question=item["question"], reference=item["reference"], answer=row["answer"])}],
+            max_tokens=600)
+        grade, reason = parse_judge(text)
+        row["judge"] = {"model": model_name, "grade": grade, "reason": reason}
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        list(pool.map(one, rows))
+
+
+def write_report(out: Path, results: dict[str, list[dict]], meta: dict) -> str:
+    summaries = {label: summarize(rows) for label, rows in results.items()}
+    comparisons = {}
+    if "base" in results and "tuned" in results:
+        comparisons["Key-fact recall"] = paired(results["base"], results["tuned"],
+                                                lambda r: r["scores"]["key_fact_recall"])
+        comparisons["Format checks passed"] = paired(
+            results["base"], results["tuned"],
+            lambda r: sum(r["scores"][k] for k in ("both_levels", "no_artifacts", "no_self_intro",
+                                                   "balanced_math", "complete")))
+        if any(r.get("judge", {}).get("grade") for r in results["tuned"]):
+            comparisons["Judge grade"] = paired(results["base"], results["tuned"],
+                                                lambda r: r.get("judge", {}).get("grade"))
+    summary = {**meta, "summaries": summaries, "comparisons": comparisons}
+    (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    table = markdown_table(summaries, comparisons)
+    (out / "table.md").write_text(table, encoding="utf-8")
+    return table
+
+
+def rejudge(args) -> None:
+    """Grade saved answers again (no GPU): python -m resonance.evaluate --rejudge results/v2"""
+    from .data import Teacher
+
+    out = Path(args.rejudge)
+    items = load_jsonl(args.questions)
+    judge = Teacher(model=args.judge_model, base_url=args.judge_base_url,
+                    api_key=os.environ.get(args.judge_key_env), temperature=0.0, thinking="minimal")
+    results = {}
+    for label in ("base", "tuned"):
+        path = out / f"answers_{label}.jsonl"
+        if not path.exists():
+            continue
+        rows = load_jsonl(path)
+        judge_rows(judge, items, rows, args.judge_model)
+        with open(path, "w", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        missing = sum(1 for r in rows if r["judge"]["grade"] is None)
+        print(f"{label}: judged {len(rows)}, unparsed {missing}")
+        results[label] = rows
+    old = json.loads((out / "summary.json").read_text(encoding="utf-8")) if (out / "summary.json").exists() else {}
+    meta = {k: v for k, v in old.items() if k not in ("summaries", "comparisons")}
+    meta["judge_model"] = args.judge_model
+    print(write_report(out, results, meta))
 
 
 def sign_test(wins: int, losses: int) -> float:
@@ -140,7 +206,13 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--judge-base-url", default=j_url)
     p.add_argument("--judge-key-env", default=j_key_env)
     p.add_argument("--no-judge", action="store_true")
+    p.add_argument("--rejudge", default=None,
+                   help="grade the saved answers in this folder again, without a GPU")
     args = p.parse_args(argv)
+
+    if args.rejudge:
+        rejudge(args)
+        return
 
     from .model import BASE_MODEL, GenerationConfig, Tutor
 
@@ -148,15 +220,6 @@ def main(argv: list[str] | None = None) -> None:
     tutor = Tutor(base_model=args.base_model or BASE_MODEL, adapter=args.adapter,
                   load_in_4bit=args.load_in_4bit)
     cfg = GenerationConfig(max_new_tokens=args.max_new_tokens, temperature=0.0)
-
-    judge = None
-    if args.no_judge:
-        args.judge_model = None
-    if args.judge_model:
-        from .data import Teacher
-
-        judge = Teacher(model=args.judge_model, base_url=args.judge_base_url,
-                        api_key=os.environ.get(args.judge_key_env), temperature=0.0)
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -169,45 +232,36 @@ def main(argv: list[str] | None = None) -> None:
             row = {"id": item["id"], "question": item["question"], "answer": gen.text,
                    "new_tokens": gen.new_tokens, "truncated": gen.truncated,
                    "scores": score_answer(item, gen.text, gen.truncated)}
-            if judge:
-                text, _ = judge.chat([{"role": "user", "content": JUDGE_PROMPT.format(
-                    question=item["question"], reference=item["reference"], answer=gen.text)}],
-                    max_tokens=200)
-                grade, reason = parse_judge(text)
-                row["judge"] = {"model": args.judge_model, "grade": grade, "reason": reason}
             rows.append(row)
             print(f"[{label} {i + 1}/{len(items)}] {item['id']}: ok={row['scores']['ok']} "
                   f"facts={row['scores']['key_fact_recall']:.0%} tokens={gen.new_tokens}")
         results[label] = rows
+
+    # The judge runs after generation, in parallel, so its API latency does not hold the GPU.
+    if args.no_judge:
+        args.judge_model = None
+    if args.judge_model:
+        from .data import Teacher
+
+        judge = Teacher(model=args.judge_model, base_url=args.judge_base_url,
+                        api_key=os.environ.get(args.judge_key_env), temperature=0.0,
+                        thinking="minimal")
+        for rows in results.values():
+            judge_rows(judge, items, rows, args.judge_model)
+
+    for label, rows in results.items():
         with open(out / f"answers_{label}.jsonl", "w", encoding="utf-8") as f:
             for r in rows:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
-    summaries = {label: summarize(rows) for label, rows in results.items()}
-    comparisons = {}
-    if "base" in results:
-        comparisons["Key-fact recall"] = paired(results["base"], results["tuned"],
-                                                lambda r: r["scores"]["key_fact_recall"])
-        comparisons["Format checks passed"] = paired(
-            results["base"], results["tuned"],
-            lambda r: sum(r["scores"][k] for k in ("both_levels", "no_artifacts", "no_self_intro",
-                                                   "balanced_math", "complete")))
-        if judge:
-            comparisons["Judge grade"] = paired(results["base"], results["tuned"],
-                                                lambda r: r.get("judge", {}).get("grade"))
-    summary = {
+    meta = {
         "adapter": args.adapter if not os.path.isdir(args.adapter) else Path(args.adapter).name,
         "base_model": args.base_model or BASE_MODEL,
         "questions": len(items),
         "decoding": {"greedy": True, "max_new_tokens": args.max_new_tokens},
         "judge_model": args.judge_model,
-        "summaries": summaries,
-        "comparisons": comparisons,
     }
-    (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    table = markdown_table(summaries, comparisons)
-    (out / "table.md").write_text(table, encoding="utf-8")
-    print(table)
+    print(write_report(out, results, meta))
 
 
 if __name__ == "__main__":

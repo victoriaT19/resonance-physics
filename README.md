@@ -43,7 +43,7 @@ arXiv abstracts ─┴─► teacher model ─► checks + held-out filter
 ```
 
 1. **Data** (`resonance/data.py`). Questions come from a syllabus of about 120 topics and from the core concept of recent arXiv abstracts in five categories. A teacher model, behind any OpenAI-compatible API, answers each one with the same system prompt the tutor is trained on. An answer is kept only if it has both levels, closed LaTeX, no template leaks or self-introduction, a sensible length, and was not cut off; `--verify` adds a second pass where the teacher reviews it for physics errors. Questions that touch an evaluation topic are dropped. Details: [`data/README.md`](data/README.md).
-2. **Training** (`resonance/train.py`). QLoRA (rank 16) with Unsloth on the language model's attention and MLP layers, loss on the answers only, cosine schedule with warm-up, validation every epoch and the best epoch kept.
+2. **Training** (`resonance/train.py`). QLoRA (rank 16) with Unsloth on the language model's attention and MLP layers, loss on the answers only, learning rate 5e-5 for one epoch with warm-up and cosine decay (a stronger setting made the physics worse; see Results), validation at the end of each epoch.
 3. **Evaluation** (`resonance/evaluate.py`). The base model and the fine-tuned model answer 20 hand-written questions with greedy decoding, from one load (the adapter switched off and on). Each answer is checked for format, for the central equation of the question ("key-fact recall", matched across LaTeX and Unicode spellings) and, optionally, graded 1-5 by an LLM judge that sees a reference answer. Results are compared question by question with a sign test.
 4. **Model card** (`resonance/card.py`). Written from the measured numbers and uploaded with the adapter.
 5. **Demo** (`app.py`). Gradio chat with streaming, LaTeX rendering and conversation history, next to three simulations that the app picks from the question (and fills with any numbers in it, such as "excentricidade 0,7"). Each has its own sliders; moving one recomputes the plot and a panel of derived quantities in about 0.1 s, without calling the model again:
@@ -58,9 +58,22 @@ arXiv abstracts ─┴─► teacher model ─► checks + held-out filter
 
 ## Results
 
-**Not measured yet.** The pipeline above has to be run on a GPU (the notebook does it end to end); the table from `results/<run>/table.md` goes here afterwards. The adapter currently on the Hub is the first version, trained with the wrong chat format.
+Two runs on the same 330 teacher-written samples (Colab T4), on the 20 held-out questions:
 
-What has been verified so far is in [`docs/test-log.md`](docs/test-log.md).
+| Metric | base | v2: lr 2e-4, 2 epochs | v3: lr 5e-5, 1 epoch |
+|---|---|---|---|
+| Answers passing every format check | 90% | 100% | 100% |
+| Finished before the token limit | 90% | 100% | 100% |
+| Key-fact recall | 80% | 65% | 85% |
+| Judge grade (1-5, Gemma 4 31B with a reference answer) | 3.30 | **2.30** | **3.20** |
+| Mean length (words) | 443 | 349 | 347 |
+
+- **v2 made the physics worse.** Per question, the judge preferred the base model 13 times and v2 4 times (3 ties; sign test p = 0.049). v2 always answered in two levels, but wrote confident derivations that went wrong: Snell's law without refractive indices, a Newtonian gravitational redshift. Training a 2B model hard on a 31B model's derivations taught it the style of a derivation more than its content. v2 also had the *lower* validation loss (0.665 against 0.884): the validation set is teacher text too, so a lower loss means closer imitation of the teacher, not more correct physics. Only the held-out evaluation with a judge exposed the problem.
+- **v3, trained gently, kept the base model's physics** (6 wins each, 8 ties; p = 1.0) while always using the two-level format, always finishing and writing about 22% fewer words. It does not make the model more correct: with a judge grade near 3 of 5, both still make mistakes. **v3 is the adapter published on the Hub**, and the training defaults in `resonance/train.py` reproduce it.
+
+This matches what Gudibande et al. found for chat models: imitating a stronger model's outputs transfers its style much more than its factual accuracy ([The False Promise of Imitating Proprietary LLMs](https://arxiv.org/abs/2305.15717), 2023).
+
+Full numbers, raw answers and grades: [`docs/test-log.md`](docs/test-log.md), [`results/v2/`](results/v2/), [`results/v3/`](results/v3/).
 
 ## Run
 

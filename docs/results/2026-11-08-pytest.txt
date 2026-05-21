@@ -64,4 +64,4 @@ tests/test_sims.py::test_render_is_fast_enough_for_live_sliders[oscilador-params
 tests/test_sims.py::test_render_is_fast_enough_for_live_sliders[pacote-params1] PASSED [ 98%]
 tests/test_sims.py::test_render_is_fast_enough_for_live_sliders[orbita-params2] PASSED [100%]
 
-============================= 60 passed in 34.86s =============================
+============================= 60 passed in 44.13s =============================

@@ -91,7 +91,85 @@ validation question matches an evaluation exclusion term; every answer passes th
 format checks. `cache.jsonl` (every attempt, with the review verdicts) is kept out of
 the repository.
 
-### Not done
+### Training run v2 (Colab, Tesla T4)
 
-- Training and evaluation (need a GPU). The README's Results section stays empty until
-  they run.
+`notebooks/resonance_pipeline.ipynb`, Unsloth 2026.11.3, transformers 5.17.0, torch
+2.14.1+cu130. The T4 has no bfloat16; Unsloth ran Gemma 4 in float32 ("float16 won't
+work"). Raw log: [`results/v2/training_log.json`](../results/v2/training_log.json).
+
+| | value |
+|---|---|
+| Samples | 297 train, 33 validation (none dropped for length) |
+| Answer tokens trained on | 183,778 |
+| Steps | 76 (38 per epoch, 4 warm-up), effective batch 8, lr 2e-4 cosine |
+| Trainable parameters | 24,158,208 of 5,128,455,712 (0.47%) |
+| Training loss | 1.379 at the first log, 0.623 at the last, 0.739 mean |
+| Validation loss | 0.675 after epoch 1, **0.665** after epoch 2 (kept) |
+| Runtime | 742 s |
+
+### Evaluation v2: base vs fine-tuned
+
+20 held-out questions, greedy decoding, 1,024 new tokens, base model loaded in 4-bit with
+the adapter off and on (about 1 h on the T4, judge calls included). Raw answers and
+grades: [`results/v2/`](../results/v2/).
+
+The judge returned an empty text on all 40 answers in the Colab run: with Gemma 4's
+default thinking, the 200-token budget was spent on reasoning. Fixed (`thinking_level:
+minimal`, 600 tokens, a parser that accepts `**NOTA:** 4`) and the saved answers were
+graded again locally with `python -m resonance.evaluate --rejudge results/v2`; all 40
+grades parsed.
+
+| Metric | base | tuned |
+|---|---|---|
+| Answers passing every format check | 90% | 100% |
+| Finished before the token limit | 90% | 100% |
+| Both levels / no leaks / no self-intro / closed LaTeX | 100% | 100% |
+| Key-fact recall | 80% | 65% |
+| Judge grade (1-5, gemma-4-31b-it with the reference answer) | **3.30** | **2.30** |
+| Mean length (words) | 443 | 349 |
+
+| Paired, per question | tuned better | base better | ties | sign test p |
+|---|---|---|---|---|
+| Key-fact recall | 1 | 4 | 15 | 0.375 |
+| Format checks passed | 2 | 0 | 18 | 0.5 |
+| Judge grade | 4 | 13 | 3 | **0.049** |
+
+**Result: the fine-tuned adapter answers in the right format every time but is less
+correct than the base model.** The four key-fact losses are real errors, read by hand:
+Snell's law derived without the refractive indices, a Newtonian "derivation" of the
+gravitational redshift, orbital speed instead of Kepler's third law, wrong double-slit
+geometry. The tuned model also produced a Wien temperature off by six orders of
+magnitude. It improved on the pendulum, Faraday's law, the oscillator and the cyclotron
+radius. The base model itself averages 3.3 of 5, so neither is reliable.
+
+Not published (v3 below was published instead).
+
+### Training run v3: conservative
+
+Same data and Colab session; learning rate 5e-5 (4× lower) and 1 epoch, to move the
+model less from what it already knows. 38 steps, 362 s; training loss 1.045 mean,
+validation loss **0.884** (v2 reached 0.665). Raw log:
+[`results/v3/training_log.json`](../results/v3/training_log.json).
+
+Evaluated only the fine-tuned model (greedy decoding is deterministic, so the base
+answers from v2 were reused), then graded base and v3 locally with the fixed judge
+(`--rejudge results/v3`); all 40 grades parsed. The base model's mean grade came out at
+3.30 again.
+
+| Metric | base | v2 (lr 2e-4, 2 epochs) | v3 (lr 5e-5, 1 epoch) |
+|---|---|---|---|
+| Answers passing every format check | 90% | 100% | 100% |
+| Finished before the token limit | 90% | 100% | 100% |
+| Key-fact recall | 80% | 65% | 85% |
+| Judge grade (1-5) | 3.30 | 2.30 | **3.20** |
+| Mean length (words) | 443 | 349 | 347 |
+
+| v3 vs base, per question | tuned better | base better | ties | sign test p |
+|---|---|---|---|---|
+| Key-fact recall | 3 | 2 | 15 | 1.0 |
+| Format checks passed | 2 | 0 | 18 | 0.5 |
+| Judge grade | 6 | 6 | 8 | 1.0 |
+
+**Result: v3 keeps the base model's physics (no measurable difference in the judge's
+grades) while always answering in the two-level format, finishing, and using about 22%
+fewer words.** It does not make the model more correct.

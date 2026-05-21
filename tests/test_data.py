@@ -52,6 +52,8 @@ def test_write_splits(tmp_path):
 def test_parse_judge():
     assert parse_judge("NOTA: 4\nMOTIVO: faltou o fator 2.") == (4, "faltou o fator 2.")
     assert parse_judge("não sei")[0] is None
+    assert parse_judge("**NOTA:** 3\n**MOTIVO:** faltou n")[0] == 3
+    assert parse_judge("**NOTA**: 5")[0] == 5
 
 
 def test_sign_test():

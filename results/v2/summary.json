@@ -1,0 +1,56 @@
+{
+  "adapter": "adapter",
+  "base_model": "unsloth/gemma-4-E2B-it",
+  "questions": 20,
+  "decoding": {
+    "greedy": true,
+    "max_new_tokens": 1024
+  },
+  "judge_model": "gemma-4-31b-it",
+  "summaries": {
+    "base": {
+      "ok": 0.9,
+      "both_levels": 1.0,
+      "no_artifacts": 1.0,
+      "no_self_intro": 1.0,
+      "balanced_math": 1.0,
+      "complete": 0.9,
+      "key_fact_recall": 0.8,
+      "mean_words": 442.55,
+      "judge_mean": 3.3,
+      "judge_n": 20
+    },
+    "tuned": {
+      "ok": 1.0,
+      "both_levels": 1.0,
+      "no_artifacts": 1.0,
+      "no_self_intro": 1.0,
+      "balanced_math": 1.0,
+      "complete": 1.0,
+      "key_fact_recall": 0.65,
+      "mean_words": 349.15,
+      "judge_mean": 2.3,
+      "judge_n": 20
+    }
+  },
+  "comparisons": {
+    "Key-fact recall": {
+      "tuned_better": 1,
+      "base_better": 4,
+      "ties": 15,
+      "sign_test_p": 0.375
+    },
+    "Format checks passed": {
+      "tuned_better": 2,
+      "base_better": 0,
+      "ties": 18,
+      "sign_test_p": 0.5
+    },
+    "Judge grade": {
+      "tuned_better": 4,
+      "base_better": 13,
+      "ties": 3,
+      "sign_test_p": 0.049
+    }
+  }
+}
