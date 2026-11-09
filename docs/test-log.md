@@ -173,3 +173,10 @@ answers from v2 were reused), then graded base and v3 locally with the fixed jud
 **Result: v3 keeps the base model's physics (no measurable difference in the judge's
 grades) while always answering in the two-level format, finishing, and using about 22%
 fewer words.** It does not make the model more correct.
+
+## 2026-11-09: demo on a Hugging Face Space
+
+- Creating a Gradio Space through the API with a free account was refused (HTTP 402: "hosting Gradio and Docker Spaces on free cpu-basic requires a PRO subscription"). Creating it on the website worked, with ZeroGPU; `scripts/deploy_space.py` then uploaded the files.
+- First start failed with `RuntimeError: No CUDA GPUs are available`: PEFT loads adapter weights onto "cuda" by default, and a ZeroGPU Space has no GPU outside `@spaces.GPU`. Fixed by loading the adapter on the CPU (`torch_device="cpu"`) before moving the model.
+- Second start: running on `zero-a10g` about 1.5 min after upload. A question about the simple pendulum streamed a two-level answer with rendered LaTeX; the header read "Gemma 4 E2B + Resonance LoRA · ZeroGPU".
+- Locally, before deploying: the generation path ran with and without a stand-in `spaces` module (the decorated generator was called once and streamed 1,025 chunks on the tiny random Gemma 4); 60 tests passed.

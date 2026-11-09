@@ -26,10 +26,27 @@ parser.add_argument("--base-only", action="store_true")
 parser.add_argument("--load-in-4bit", action="store_true")
 parser.add_argument("--dry-run", action="store_true")
 parser.add_argument("--share", action="store_true")
-parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 7860)))
+parser.add_argument("--device", default=os.environ.get("RESONANCE_DEVICE"),
+                    help="cuda or cpu (default: cuda if available)")
+parser.add_argument("--port", type=int,
+                    default=int(os.environ.get("GRADIO_SERVER_PORT", os.environ.get("PORT", 7860))))
 args, _ = parser.parse_known_args()
 
 MAX_HISTORY_TURNS = 4
+
+# On a Hugging Face ZeroGPU Space, a GPU is attached only while a function decorated
+# with @spaces.GPU runs. The model is moved to "cuda" at start-up (ZeroGPU allows it)
+# and generation happens inside the decorated function. Elsewhere this is a no-op.
+try:
+    import spaces
+
+    gpu = spaces.GPU(duration=120)
+    ON_ZERO_GPU = True
+except ImportError:
+    def gpu(fn):
+        return fn
+
+    ON_ZERO_GPU = False
 
 if args.dry_run:
     tutor = None
@@ -38,11 +55,15 @@ else:
     from resonance.model import Tutor
 
     adapter = None if args.base_only else args.adapter
+    device = args.device or ("cuda" if ON_ZERO_GPU else None)
     print(f"Loading {args.base_model}" + (f" + {adapter}" if adapter else ""))
-    tutor = Tutor(base_model=args.base_model, adapter=adapter, load_in_4bit=args.load_in_4bit)
-    MODEL_LABEL = "Gemma 4 E2B" + (" + Resonance LoRA" if adapter else " (base)") + f" · {tutor.device}"
+    tutor = Tutor(base_model=args.base_model, adapter=adapter, device=device,
+                  load_in_4bit=args.load_in_4bit)
+    MODEL_LABEL = "Gemma 4 E2B" + (" + Resonance LoRA" if adapter else " (base)") + (
+        " · ZeroGPU" if ON_ZERO_GPU else f" · {tutor.device}")
 
 
+@gpu
 def answer_stream(question: str, history: list[dict]):
     if tutor is None:
         reply = (
@@ -182,6 +203,7 @@ with gr.Blocks(title="Resonance: physics tutor") as demo:
 
 
 if __name__ == "__main__":
-    demo.queue().launch(server_name=os.environ.get("HOST", "127.0.0.1"),
+    # Spaces set GRADIO_SERVER_NAME=0.0.0.0; locally the app stays on localhost.
+    demo.queue().launch(server_name=os.environ.get("GRADIO_SERVER_NAME", "127.0.0.1"),
                         server_port=args.port, share=args.share, show_error=True,
                         css=CSS, theme=gr.themes.Soft())

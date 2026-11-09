@@ -66,7 +66,10 @@ class Tutor:
         if adapter:
             from peft import PeftModel
 
-            model = PeftModel.from_pretrained(model, adapter)
+            # Load the adapter weights on the CPU and move the whole model afterwards: on a
+            # ZeroGPU Space there is no GPU at start-up, and PEFT would otherwise load the
+            # weights straight onto "cuda".
+            model = PeftModel.from_pretrained(model, adapter, torch_device="cpu")
         if not load_in_4bit:
             model = model.to(device)
         model.eval()

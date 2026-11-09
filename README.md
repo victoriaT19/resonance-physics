@@ -2,6 +2,7 @@
 
 **A physics tutor fine-tuned from Gemma 4 E2B that answers in two levels: intuition first, then the derivation.** Built for the Gemma 4 Good Hackathon (Kaggle, 2026) and rebuilt afterwards, once its first version turned out to be broken in ways the original benchmark did not show.
 
+- **Live demo** (Hugging Face Space, ZeroGPU): [huggingface.co/spaces/vtaua/resonance-physics-demo](https://huggingface.co/spaces/vtaua/resonance-physics-demo)
 - Model (LoRA adapter): [huggingface.co/vtaua/resonance-gemma4-physics](https://huggingface.co/vtaua/resonance-gemma4-physics)
 - Pipeline notebook (Colab or Kaggle GPU): [`notebooks/resonance_pipeline.ipynb`](notebooks/resonance_pipeline.ipynb)
 
@@ -84,6 +85,7 @@ python app.py                          # Gemma 4 E2B + adapter from the Hub (GPU
 python app.py --base-only              # the base model
 python app.py --adapter outputs/adapter --load-in-4bit --share
 python app.py --dry-run                # no model, to try the interface
+python scripts/deploy_space.py         # publish to a Hugging Face Space (create it on the website first)
 
 pytest                                 # 60 tests; the formatting tests download the Gemma 4 tokenizer
 ```
